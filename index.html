@@ -259,20 +259,38 @@
             text-shadow: 2px 2px 0 var(--wood-darker);
         }
 
-        .start-btn {
-            margin-top: 30px;
-            background: #7ca847;
+        /* 類別選擇按鈕 */
+        .choices-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .choice-btn {
             color: white;
-            border: 4px solid #2e4712;
+            border: 4px solid var(--wood-darker);
             padding: 15px 20px;
             font-family: inherit;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             box-shadow: inset 3px 3px 0 rgba(255,255,255,0.4), 6px 6px 0 rgba(0,0,0,0.3);
+            transition: transform 0.1s;
         }
-        .start-btn:hover { background: #8bc34a; }
+        
+        .choice-btn:active {
+            box-shadow: inset 4px 4px 0 rgba(0,0,0,0.2), 0px 0px 0 rgba(0,0,0,0);
+            transform: translate(2px, 2px);
+        }
 
-        /* 浮動控制按鈕 (音樂開關、重置) */
+        .meal-btn { background: #d9534f; border-color: #902b2b; }
+        .meal-btn:hover { background: #e27c79; }
+        
+        .snack-btn { background: #f0ad4e; border-color: #a67128; }
+        .snack-btn:hover { background: #f4c37d; }
+
+        /* 浮動控制按鈕 (音樂開關、重置、返回) */
         .controls {
             position: fixed;
             bottom: 20px;
@@ -280,6 +298,9 @@
             display: flex;
             gap: 10px;
             z-index: 50;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 90vw;
         }
 
         .icon-btn {
@@ -305,16 +326,19 @@
 </head>
 <body>
 
-    <!-- 開場畫面：用於啟動音效與遊戲 -->
+    <!-- 開場畫面：選擇正餐或點心 -->
     <div class="intro-screen" id="introScreen">
         <h1 style="font-size: 24px; line-height: 1.5; padding: 20px;">歡迎來到<br>午餐選擇困難戳戳樂</h1>
-        <p style="font-size: 12px;">準備好你的運氣了嗎？</p>
-        <button class="start-btn" onclick="startGame()">點擊開始</button>
+        <p style="font-size: 12px;">今天想吃點什麼呢？</p>
+        <div class="choices-container">
+            <button class="choice-btn meal-btn" onclick="startGame('meal')">🍱 我想吃正餐</button>
+            <button class="choice-btn snack-btn" onclick="startGame('snack')">🍰 我想吃點心</button>
+        </div>
     </div>
 
     <!-- 遊戲主畫面 -->
     <div class="header">
-        <h1>午餐選擇困難戳戳樂</h1>
+        <h1 id="gameTitle">午餐選擇困難戳戳樂</h1>
         <p>點擊雜草，看看發現了什麼！</p>
     </div>
 
@@ -334,6 +358,7 @@
 
     <!-- 控制按鈕區 -->
     <div class="controls">
+        <button class="icon-btn" id="homeBtn" onclick="backToMenu()" style="padding: 0 15px; font-size: 12px;">🏠 返回</button>
         <button class="icon-btn" id="randomPickBtn" onclick="randomPick()" style="padding: 0 15px; font-size: 12px;">🤔 幫我選</button>
         <button class="icon-btn" id="muteBtn" onclick="toggleMute()">🎵</button>
         <button class="icon-btn" id="resetBtn" onclick="resetGame()" style="display: none; padding: 0 15px; font-size: 12px;">🔄 重來</button>
@@ -343,7 +368,6 @@
         // ==========================================
         // 核心功能 1: 像素 SVG 產生器
         // ==========================================
-        // 利用 ASCII Art 陣列和調色盤，快速產生完美的 16x16 像素 SVG 圖形
         function createPixelArt(ascii, palette) {
             const rows = ascii.trim().split('\n');
             const h = rows.length;
@@ -364,7 +388,6 @@
         // ==========================================
         // 圖形資料 (ASCII Art)
         // ==========================================
-        // 雜草 (覆蓋層)
         const weedSvg = createPixelArt(`
             ................
             ......ll........
@@ -383,26 +406,71 @@
             .........ll.....
             ................
         `, {
-            'l': '#8bc34a', // 亮綠
-            'm': '#557d2a', // 中綠
-            'd': '#2e4712'  // 暗綠
+            'l': '#8bc34a', 'm': '#557d2a', 'd': '#2e4712'
         });
 
         // ==========================================
         // ★ 自訂食物清單 ★
-        // 你可以在這裡依照格式新增更多食物！
+        // 新增了 category: 'meal' (正餐) 或 'snack' (點心)
         // ==========================================
         const foodDatabase = [
-            // 【教學】如何上傳你自己的圖片：
-            // 1. 將 imgUrl 替換成你的圖片路徑。例如：'./images/my-cake.png' (如果你把圖片放在 images 資料夾裡)
-            // 2. 也可以直接貼上網路上的圖片網址！(例如 imgur 的連結)
+            // --- 點心類 (snack) ---
             {
+                category: 'snack',
                 name: '神秘金蘋果',
                 desc: '『閃閃發光，咬下去有金屬的聲音。』',
-                // 這裡示範使用外部圖片網址 (記得保留單引號)
                 imgUrl: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f34e.png'
             },
             {
+                category: 'snack',
+                name: '巧克力蛋糕',
+                desc: '『濃郁的巧克力，完美的下午茶選擇。』',
+                imgUrl: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f370.png'
+            },
+            {
+                category: 'snack',
+                name: '草莓冰淇淋',
+                desc: '『夏天就是要吃冰！融化前快吃掉！』',
+                imgUrl: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f366.png'
+            },
+            {
+                category: 'snack',
+                name: '大黃派',
+                desc: '『酸酸甜甜，像極了冒險的味道。』',
+                svg: createPixelArt(`
+                    ................
+                    ......cccc......
+                    ....ccrrrrcc....
+                    ...crrrrrrrrc...
+                    ..crrrrrrrrrrc..
+                    .crrccrrrrccrrc.
+                    .crrccrrrrccrrc.
+                    .crrrrrrrrrrrrc.
+                    .crrccrrrrccrrc.
+                    ..crrrrrrrrrrc..
+                    ...crrrrrrrrc...
+                    ....ccrrrrcc....
+                    ......cccc......
+                    .......ss.......
+                    .......ss.......
+                    ................
+                `, { 'c': '#d4a373', 'r': '#e63946', 's': '#adb5bd' })
+            },
+            // --- 正餐類 (meal) ---
+            {
+                category: 'meal',
+                name: '特製漢堡',
+                desc: '『肉汁四溢，充滿能量的一餐！』',
+                imgUrl: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f354.png'
+            },
+            {
+                category: 'meal',
+                name: '熱騰騰拉麵',
+                desc: '『濃郁的豚骨湯頭，讓人一口接一口。』',
+                imgUrl: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f35c.png'
+            },
+            {
+                category: 'meal',
                 name: '生魚片',
                 desc: '『一片切得整齊的生魚。營養又方便。』',
                 svg: createPixelArt(`
@@ -425,6 +493,7 @@
                 `, { 'r': '#e63946', 'w': '#f1faee' })
             },
             {
+                category: 'meal',
                 name: '幸運午餐',
                 desc: '『這會讓你覺得今天非常幸運！』',
                 svg: createPixelArt(`
@@ -447,6 +516,7 @@
                 `, { 'w': '#f8f9fa', 'y': '#ffca3a', 'g': '#8bc34a' })
             },
             {
+                category: 'meal',
                 name: '奇怪的小圓麵包',
                 desc: '『它聞起來... 很有趣。』',
                 svg: createPixelArt(`
@@ -469,28 +539,7 @@
                 `, { 'b': '#4a4e69', 'd': '#22223b', 'p': '#9a8c98' })
             },
             {
-                name: '大黃派',
-                desc: '『酸酸甜甜，像極了冒險的味道。』',
-                svg: createPixelArt(`
-                    ................
-                    ......cccc......
-                    ....ccrrrrcc....
-                    ...crrrrrrrrc...
-                    ..crrrrrrrrrrc..
-                    .crrccrrrrccrrc.
-                    .crrccrrrrccrrc.
-                    .crrrrrrrrrrrrc.
-                    .crrccrrrrccrrc.
-                    ..crrrrrrrrrrc..
-                    ...crrrrrrrrc...
-                    ....ccrrrrcc....
-                    ......cccc......
-                    .......ss.......
-                    .......ss.......
-                    ................
-                `, { 'c': '#d4a373', 'r': '#e63946', 's': '#adb5bd' })
-            },
-            {
+                category: 'meal',
                 name: '南瓜湯',
                 desc: '『秋天的溫暖縮影，讓人平靜。』',
                 svg: createPixelArt(`
@@ -520,6 +569,7 @@
         const GRID_SIZE = 25;
         let boardFoods = [];
         let revealedCount = 0;
+        let currentCategory = 'meal'; // 儲存當前選擇的類別
 
         // 初始化遊戲版面
         function initGame() {
@@ -529,11 +579,19 @@
             revealedCount = 0;
             document.getElementById('resetBtn').style.display = 'none';
             document.getElementById('randomPickBtn').style.display = 'flex';
+            
+            // 更新標題文字
+            const titleEl = document.getElementById('gameTitle');
+            titleEl.textContent = currentCategory === 'meal' ? '🍱 正餐戳戳樂' : '🍰 點心戳戳樂';
+
+            // 根據選擇的類別過濾食物清單
+            const availableFoods = foodDatabase.filter(food => food.category === currentCategory);
+            // 萬一該類別沒有食物，就用全部食物兜底
+            const sourceFoods = availableFoods.length > 0 ? availableFoods : foodDatabase;
 
             // 隨機為 25 個格子分配食物
             for (let i = 0; i < GRID_SIZE; i++) {
-                // 從資料庫中隨機挑選一個
-                const randomFood = foodDatabase[Math.floor(Math.random() * foodDatabase.length)];
+                const randomFood = sourceFoods[Math.floor(Math.random() * sourceFoods.length)];
                 boardFoods.push({ ...randomFood, revealed: false });
 
                 // 建立格子 HTML
@@ -545,7 +603,6 @@
                 const foodIcon = document.createElement('div');
                 foodIcon.className = 'food-icon';
                 
-                // 判斷：如果有圖片路徑 (imgUrl) 就顯示圖片，否則顯示 SVG 繪圖
                 if (randomFood.imgUrl) {
                     foodIcon.innerHTML = `<img src="${randomFood.imgUrl}" alt="${randomFood.name}" style="width:100%;height:100%;object-fit:contain;image-rendering:pixelated;">`;
                 } else {
@@ -569,34 +626,28 @@
         // 處理格子點擊
         function handleCellClick(index, cellElement, event) {
             const food = boardFoods[index];
-            if (food.revealed) return; // 已經翻開就忽略
+            if (food.revealed) return;
 
             food.revealed = true;
             cellElement.classList.add('revealed');
             revealedCount++;
             
-            // 顯示重置按鈕
             if (revealedCount > 0) {
                 document.getElementById('resetBtn').style.display = 'flex';
             }
-            // 如果全部翻開，隱藏「幫我選」按鈕
             if (revealedCount >= GRID_SIZE) {
                 document.getElementById('randomPickBtn').style.display = 'none';
             }
 
-            // 播放音效
             playPopSound();
-
-            // 觸發像素碎裂特效
             createShatterEffect(event.clientX, event.clientY, cellElement);
 
-            // 延遲一點點顯示彈窗，讓玩家看清楚爆破與出現的食物
             setTimeout(() => {
                 showPopup(food);
             }, 400);
         }
 
-        // 像素碎裂特效 (產生 DOM 粒子)
+        // 像素碎裂特效
         function createShatterEffect(x, y, targetElement) {
             const rect = targetElement.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
@@ -610,18 +661,15 @@
                 particle.className = 'particle';
                 particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
                 
-                // 起始位置在格子中心
                 particle.style.left = `${centerX - 4}px`;
                 particle.style.top = `${centerY - 4}px`;
                 document.body.appendChild(particle);
 
-                // 計算隨機飛散方向與距離
                 const angle = Math.random() * Math.PI * 2;
                 const distance = 30 + Math.random() * 50;
                 const destX = Math.cos(angle) * distance;
-                const destY = Math.sin(angle) * distance - 20; // 稍微往上拋
+                const destY = Math.sin(angle) * distance - 20;
 
-                // 使用 Web Animations API 進行動畫
                 const animation = particle.animate([
                     { transform: 'translate(0, 0) scale(1)', opacity: 1 },
                     { transform: `translate(${destX}px, ${destY}px) scale(0.5)`, opacity: 0 }
@@ -630,17 +678,14 @@
                     easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
                 });
 
-                // 動畫結束後移除 DOM
                 animation.onfinish = () => particle.remove();
             }
         }
 
-        // 顯示彈窗
         function showPopup(food) {
             document.getElementById('dialogTitle').textContent = food.name;
             document.getElementById('dialogDesc').textContent = food.desc;
             
-            // 判斷：彈窗也要支援外部圖片
             if (food.imgUrl) {
                 document.getElementById('dialogIcon').innerHTML = `<img src="${food.imgUrl}" alt="${food.name}" style="width:100%;height:100%;object-fit:contain;image-rendering:pixelated;">`;
             } else {
@@ -650,29 +695,30 @@
             document.getElementById('modal').classList.add('active');
         }
 
-        // 關閉彈窗
         function closePopup() {
             document.getElementById('modal').classList.remove('active');
         }
 
-        // 重置遊戲
         function resetGame() {
             initGame();
         }
 
-        // 隨機幫我選 (從未翻開的格子中隨機挑選一個)
+        // 返回選單
+        function backToMenu() {
+            document.getElementById('introScreen').style.display = 'flex';
+        }
+
         function randomPick() {
             const unrevealed = [];
             boardFoods.forEach((food, index) => {
                 if (!food.revealed) unrevealed.push(index);
             });
 
-            if (unrevealed.length === 0) return; // 如果全部翻開就不動作
+            if (unrevealed.length === 0) return;
 
             const targetIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
             const cellElement = document.querySelector(`.cell[data-index="${targetIndex}"]`);
             
-            // 模擬滑鼠事件以計算爆破中心點
             const rect = cellElement.getBoundingClientRect();
             const mockEvent = {
                 clientX: rect.left + rect.width / 2,
@@ -683,21 +729,17 @@
         }
 
         // ==========================================
-        // 簡易背景音樂 (Web Audio API - 田園 Lo-fi) 與 音效
+        // 音效系統
         // ==========================================
         let audioCtx;
         let isMuted = false;
 
-        // 播放「啵！」的破裂音效
         function playPopSound() {
             if (!audioCtx || isMuted || audioCtx.state === 'suspended') return;
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
 
-            // 復古方波
             osc.type = 'square';
-            
-            // 快速降頻產生復古遊戲破裂的聲音
             osc.frequency.setValueAtTime(600, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
 
@@ -725,12 +767,11 @@
         }
 
         function startBGM() {
-            if (audioCtx) return; // 避免重複啟動
+            if (audioCtx) return;
             
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
 
-            // 星露谷風格的溫暖五聲音階 (C大調: C, D, E, G, A)
             const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 329.63, 392.00, 293.66];
             let noteIndex = 0;
 
@@ -740,11 +781,9 @@
                 const osc = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
 
-                // 使用三角波產生柔和的 8-bit 聲音
                 osc.type = 'triangle';
                 osc.frequency.value = notes[noteIndex];
 
-                // 音量包絡 (Attack, Decay) 產生撥弦/鈴聲的感覺
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.1);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
@@ -756,19 +795,18 @@
                 osc.stop(audioCtx.currentTime + 1.0);
 
                 noteIndex = (noteIndex + 1) % notes.length;
-
-                // 安排下一個音符 (BPM 大約 90)
                 setTimeout(playNote, 600);
             }
 
             playNote();
         }
 
-        // 遊戲啟動流程
-        function startGame() {
+        // 遊戲啟動流程 (帶入類別)
+        function startGame(category) {
+            currentCategory = category;
             document.getElementById('introScreen').style.display = 'none';
             initGame();
-            startBGM(); // 啟動背景音樂
+            startBGM(); 
         }
     </script>
 </body>
