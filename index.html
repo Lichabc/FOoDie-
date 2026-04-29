@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>星露谷風格 - 數位戳戳樂</title>
+    <title>午餐選擇困難戳戳樂</title>
     <!-- 引入 8-bit 風格字體 與 中文像素風格字體 -->
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -29,11 +29,7 @@
             /* 加入 DotGothic16 以支援中文像素字體 */
             font-family: 'Press Start 2P', 'DotGothic16', monospace;
             background-color: var(--wood-medium);
-            /* 木板紋理背景 */
-            background-image: 
-                linear-gradient(90deg, rgba(0,0,0,0.1) 2px, transparent 2px),
-                linear-gradient(rgba(0,0,0,0.05) 50%, transparent 50%);
-            background-size: 64px 32px;
+            /* 純木頭色背景 (已移除紋理) */
             color: var(--text-color);
             display: flex;
             flex-direction: column;
@@ -252,9 +248,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: var(--wood-medium);
-            background-image: 
-                linear-gradient(90deg, rgba(0,0,0,0.1) 2px, transparent 2px),
-                linear-gradient(rgba(0,0,0,0.05) 50%, transparent 50%);
+            /* 已移除紋理 */
             z-index: 200;
             display: flex;
             flex-direction: column;
@@ -277,20 +271,50 @@
             box-shadow: inset 3px 3px 0 rgba(255,255,255,0.4), 6px 6px 0 rgba(0,0,0,0.3);
         }
         .start-btn:hover { background: #8bc34a; }
+
+        /* 浮動控制按鈕 (音樂開關、重置) */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 50;
+        }
+
+        .icon-btn {
+            background: var(--wood-light);
+            border: 3px solid var(--wood-darker);
+            padding: 10px;
+            font-family: inherit;
+            color: var(--wood-darker);
+            cursor: pointer;
+            box-shadow: inset 2px 2px 0 rgba(255,255,255,0.4), 4px 4px 0 rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 44px;
+            font-size: 16px;
+        }
+
+        .icon-btn:active {
+            box-shadow: inset 4px 4px 0 rgba(0,0,0,0.2), 0px 0px 0 rgba(0,0,0,0);
+            transform: translate(2px, 2px);
+        }
     </style>
 </head>
 <body>
 
     <!-- 開場畫面：用於啟動音效與遊戲 -->
     <div class="intro-screen" id="introScreen">
-        <h1 style="font-size: 24px; line-height: 1.5; padding: 20px;">歡迎來到<br>星露谷戳戳樂</h1>
+        <h1 style="font-size: 24px; line-height: 1.5; padding: 20px;">歡迎來到<br>午餐選擇困難戳戳樂</h1>
         <p style="font-size: 12px;">準備好你的運氣了嗎？</p>
         <button class="start-btn" onclick="startGame()">點擊開始</button>
     </div>
 
     <!-- 遊戲主畫面 -->
     <div class="header">
-        <h1>數位戳戳樂</h1>
+        <h1>午餐選擇困難戳戳樂</h1>
         <p>點擊雜草，看看發現了什麼！</p>
     </div>
 
@@ -306,6 +330,13 @@
             <div class="dialog-desc" id="dialogDesc">食物描述...</div>
             <button class="close-btn" onclick="closePopup()">收下</button>
         </div>
+    </div>
+
+    <!-- 控制按鈕區 -->
+    <div class="controls">
+        <button class="icon-btn" id="randomPickBtn" onclick="randomPick()" style="padding: 0 15px; font-size: 12px;">🤔 幫我選</button>
+        <button class="icon-btn" id="muteBtn" onclick="toggleMute()">🎵</button>
+        <button class="icon-btn" id="resetBtn" onclick="resetGame()" style="display: none; padding: 0 15px; font-size: 12px;">🔄 重來</button>
     </div>
 
     <script>
@@ -488,12 +519,16 @@
         // ==========================================
         const GRID_SIZE = 25;
         let boardFoods = [];
+        let revealedCount = 0;
 
         // 初始化遊戲版面
         function initGame() {
             const board = document.getElementById('board');
             board.innerHTML = '';
             boardFoods = [];
+            revealedCount = 0;
+            document.getElementById('resetBtn').style.display = 'none';
+            document.getElementById('randomPickBtn').style.display = 'flex';
 
             // 隨機為 25 個格子分配食物
             for (let i = 0; i < GRID_SIZE; i++) {
@@ -538,6 +573,19 @@
 
             food.revealed = true;
             cellElement.classList.add('revealed');
+            revealedCount++;
+            
+            // 顯示重置按鈕
+            if (revealedCount > 0) {
+                document.getElementById('resetBtn').style.display = 'flex';
+            }
+            // 如果全部翻開，隱藏「幫我選」按鈕
+            if (revealedCount >= GRID_SIZE) {
+                document.getElementById('randomPickBtn').style.display = 'none';
+            }
+
+            // 播放音效
+            playPopSound();
 
             // 觸發像素碎裂特效
             createShatterEffect(event.clientX, event.clientY, cellElement);
@@ -607,10 +655,75 @@
             document.getElementById('modal').classList.remove('active');
         }
 
+        // 重置遊戲
+        function resetGame() {
+            initGame();
+        }
+
+        // 隨機幫我選 (從未翻開的格子中隨機挑選一個)
+        function randomPick() {
+            const unrevealed = [];
+            boardFoods.forEach((food, index) => {
+                if (!food.revealed) unrevealed.push(index);
+            });
+
+            if (unrevealed.length === 0) return; // 如果全部翻開就不動作
+
+            const targetIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            const cellElement = document.querySelector(`.cell[data-index="${targetIndex}"]`);
+            
+            // 模擬滑鼠事件以計算爆破中心點
+            const rect = cellElement.getBoundingClientRect();
+            const mockEvent = {
+                clientX: rect.left + rect.width / 2,
+                clientY: rect.top + rect.height / 2
+            };
+
+            handleCellClick(targetIndex, cellElement, mockEvent);
+        }
+
         // ==========================================
-        // 簡易背景音樂 (Web Audio API - 田園 Lo-fi)
+        // 簡易背景音樂 (Web Audio API - 田園 Lo-fi) 與 音效
         // ==========================================
         let audioCtx;
+        let isMuted = false;
+
+        // 播放「啵！」的破裂音效
+        function playPopSound() {
+            if (!audioCtx || isMuted || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            // 復古方波
+            osc.type = 'square';
+            
+            // 快速降頻產生復古遊戲破裂的聲音
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function toggleMute() {
+            if (!audioCtx) return;
+            if (isMuted) {
+                audioCtx.resume();
+                document.getElementById('muteBtn').textContent = '🎵';
+                isMuted = false;
+            } else {
+                audioCtx.suspend();
+                document.getElementById('muteBtn').textContent = '🔇';
+                isMuted = true;
+            }
+        }
+
         function startBGM() {
             if (audioCtx) return; // 避免重複啟動
             
